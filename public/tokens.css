@@ -1,0 +1,72 @@
+:root {
+  --color-paper: oklch(84% 0.012 235);
+  --color-paper-2: oklch(79% 0.014 235);
+  --color-paper-3: oklch(73% 0.016 235);
+  --color-surface-raised: oklch(89% 0.009 235);
+  --color-paper-wash: oklch(84% 0.012 235 / 0.92);
+  --color-paper-2-wash: oklch(79% 0.014 235 / 0.9);
+  --color-surface-wash: oklch(89% 0.009 235 / 0.94);
+  --color-photo-grade: oklch(72% 0.018 235);
+  --color-rule: oklch(48% 0.022 235);
+  --color-neutral: oklch(54% 0.018 235);
+  --color-muted: oklch(36% 0.017 235);
+  --color-ink: oklch(23% 0.018 235);
+  --color-ink-soft: oklch(31% 0.019 235);
+  --color-accent: oklch(38% 0.055 235);
+  --color-accent-ink: oklch(91% 0.008 235);
+  --color-focus: oklch(38% 0.12 245);
+  --color-error: oklch(39% 0.12 28);
+  --color-success: oklch(33% 0.075 160);
+  --color-transparent: oklch(84% 0.012 235 / 0);
+  --color-scrim: oklch(14% 0.014 235 / 0.72);
+
+  --font-display: "Noto Serif KR", serif;
+  --font-body: "Noto Sans KR", sans-serif;
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 7rem;
+  --space-4xl: 10rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.953rem;
+  --text-2xl: 2.441rem;
+  --text-3xl: 3.052rem;
+  --text-display: clamp(2.5rem, 6vw, 4.75rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 110ms;
+  --dur-short: 200ms;
+  --dur-long: 300ms;
+
+  --rule-hair: 1px;
+  --rule-strong: 2px;
+  --focus-offset: 1px;
+  --radius-control: 0;
+  --radius-card: 0;
+  --radius-field: 0;
+
+  --page-gutter: clamp(1rem, 4vw, 4rem);
+  --shell-width: 86rem;
+  --control-height: 2.75rem;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}

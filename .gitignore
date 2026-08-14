@@ -1,0 +1,11 @@
+.dev.vars*
+.env*
+node_modules/
+
+# Local source and large generation masters stay outside the deploy package.
+/assets/
+/app.js
+/index.html
+/rain.css
+/styles.css
+/tokens.css

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="서울 시민이 비 오는 날의 장면을 글과 사진으로 남기는 로컬 아카이브 프로토타입"
+    />
+    <title>Seoul After Rain — 비 오는 날의 서울 아카이브</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Noto+Serif+KR:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="rain.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">기록으로 바로가기</a>
+
+    <header class="nav-mast" id="top">
+      <div class="mast-top">
+        <div>
+          <p class="mast-line">서울의 비를 모으는 시민 아카이브 · 제1호 · 2026</p>
+          <a class="mast-name" href="#main" aria-label="Seoul After Rain 기록으로 이동">Seoul After Rain</a>
+        </div>
+      </div>
+      <div class="mast-rule" aria-hidden="true"></div>
+    </header>
+
+    <main class="archive-app shell" id="main">
+      <section class="archive-toolbar" aria-label="아카이브 보기 방식">
+        <div>
+          <p class="archive-intro" id="weather-message" aria-live="polite">지난 비를 읽는 시간입니다. 서울에 남은 장면을 천천히 골라보세요.</p>
+        </div>
+        <div class="toolbar-actions">
+          <button class="compose-primary" type="button" data-open-compose>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>
+            <span data-compose-label>지난 비 남기기</span>
+          </button>
+          <div class="view-switch" role="group" aria-label="보기 전환">
+            <button class="view-switch__button" type="button" data-view="desk" data-tooltip="아카이브 데스크" aria-label="아카이브 데스크 보기" aria-controls="desk-view" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="7" height="16" /><path d="M14 6h7M14 12h7M14 18h7" /></svg>
+            </button>
+            <button class="view-switch__button" type="button" data-view="map" data-tooltip="비 지도" aria-label="비 지도 보기" aria-controls="map-view" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z" /><path d="M9 3v15M15 6v15" /></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace desk-workspace" id="desk-view" data-view-panel="desk" aria-label="아카이브 데스크">
+        <aside class="desk-sidebar" aria-label="기록 목록과 필터">
+          <div class="desk-controls">
+            <label class="district-filter">
+              <span>지역</span>
+              <select id="district-filter">
+                <option value="all">서울 전체</option>
+              </select>
+            </label>
+            <div class="rain-filters" aria-label="비의 상태로 기록 필터링">
+              <button class="filter-chip" type="button" data-rain="all" aria-pressed="true">모든 비</button>
+              <button class="filter-chip" type="button" data-rain="이슬비" aria-pressed="false">이슬비</button>
+              <button class="filter-chip" type="button" data-rain="보통비" aria-pressed="false">보통비</button>
+              <button class="filter-chip" type="button" data-rain="소나기" aria-pressed="false">소나기</button>
+              <button class="filter-chip" type="button" data-rain="폭우" aria-pressed="false">폭우</button>
+              <button class="filter-chip" type="button" data-rain="비 갠 뒤" aria-pressed="false">비 갠 뒤</button>
+            </div>
+            <p class="result-count" id="result-count" aria-live="polite"></p>
+          </div>
+          <div class="archive-grid" id="archive-grid"></div>
+          <div class="empty-state" id="empty-state" hidden>
+            <p>이 조건에 맞는 비의 기록이 없습니다.</p>
+            <button class="button" type="button" data-open-compose>첫 장면 남기기</button>
+          </div>
+        </aside>
+        <article class="desk-reader" id="desk-reader" aria-live="polite"></article>
+      </section>
+
+      <section class="workspace map-workspace" id="map-view" data-view-panel="map" aria-label="서울 비 지도" hidden>
+        <div class="rain-map-wrap">
+          <div class="map-heading">
+            <h2>기록이 머문 서울</h2>
+          </div>
+          <div class="rain-map" id="rain-map" aria-label="서울 25개 구의 기록 지도">
+            <span class="river-label" aria-hidden="true">한강</span>
+          </div>
+        </div>
+        <aside class="map-reader" id="map-reader" aria-live="polite"></aside>
+      </section>
+
+      <p class="local-note">
+        사진은 선택입니다 · 새 기록은 관리자 검수 후 공개됩니다 · 이 데모에서는 브라우저 안에만 저장됩니다
+        <span id="weather-credit" hidden> · 날씨 데이터: <a href="https://www.weather.go.kr/" target="_blank" rel="noreferrer">기상청</a></span>
+      </p>
+    </main>
+
+    <dialog class="compose-dialog" id="compose-dialog" aria-labelledby="compose-title">
+      <form class="compose-form" id="compose-form" novalidate>
+        <div class="dialog-head">
+          <div>
+            <h2 id="compose-title" data-weather-form-title>지난 비의 기록 남기기</h2>
+            <p data-weather-form-description>기억에 남은 비 오는 날의 한 장면을 적어주세요.</p>
+          </div>
+          <button class="icon-button" type="button" id="close-dialog" aria-label="기록 작성 닫기">×</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field--wide">
+            <label for="entry-title">기록 제목 <span aria-hidden="true">*</span></label>
+            <input id="entry-title" name="title" maxlength="24" required aria-describedby="title-help" />
+            <p class="field-help" id="title-help">장면을 떠올릴 수 있는 짧은 제목을 적어주세요.</p>
+          </div>
+
+          <div class="field">
+            <label for="entry-district">서울의 구 <span aria-hidden="true">*</span></label>
+            <select id="entry-district" name="district" required aria-describedby="district-help">
+              <option value="">선택</option>
+            </select>
+            <p class="field-help" id="district-help">정확한 주소 대신 구 단위로 남깁니다.</p>
+          </div>
+
+          <div class="field">
+            <label for="entry-rain">비의 상태 <span aria-hidden="true">*</span></label>
+            <select id="entry-rain" name="rain" required aria-describedby="rain-help">
+              <option value="">선택</option>
+              <option>이슬비</option>
+              <option>보통비</option>
+              <option>소나기</option>
+              <option>폭우</option>
+              <option>비 갠 뒤</option>
+            </select>
+            <p class="field-help" id="rain-help">그 장면에 가장 가까운 상태를 고르세요.</p>
+          </div>
+
+          <div class="field field--wide">
+            <label for="entry-place">장소 이름</label>
+            <input id="entry-place" name="place" maxlength="40" aria-describedby="place-help" />
+            <p class="field-help" id="place-help">공원, 역, 큰길처럼 공개된 장소만 적어주세요.</p>
+          </div>
+
+          <div class="field field--wide">
+            <label for="entry-story">그날의 장면 <span aria-hidden="true">*</span></label>
+            <textarea
+              id="entry-story"
+              name="story"
+              minlength="20"
+              maxlength="360"
+              required
+              aria-describedby="story-help"
+            ></textarea>
+            <p class="field-help" id="story-help">20자 이상 적어주세요. 소리, 빛, 냄새처럼 기억에 남은 한 가지면 충분합니다.</p>
+          </div>
+
+          <div class="field field--wide">
+            <span class="field-label">사진 · 선택</span>
+            <label class="photo-drop" for="entry-photo">
+              <input id="entry-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span class="photo-drop__prompt">사진 고르기</span>
+              <span class="photo-drop__help">JPG, PNG, WEBP · 8 MB 이하</span>
+              <img id="photo-preview" alt="선택한 사진 미리보기" hidden />
+            </label>
+            <p class="field-help">사진을 선택하면 아래의 기록용 삽화 대신 사진이 사용됩니다.</p>
+          </div>
+
+          <fieldset class="field field--wide illustration-field" aria-describedby="illustration-help">
+            <legend>사진이 없을 때 사용할 기록용 삽화</legend>
+            <div class="illustration-picker" id="illustration-picker">
+              <label class="illustration-option">
+                <input type="radio" name="illustration" value="assets/rain-illustration-bus-window-v1.webp" checked />
+                <img src="assets/rain-illustration-bus-window-v1.webp" width="1280" height="960" loading="lazy" alt="과슈로 그린 비 오는 버스 창가" />
+                <span>버스 창가</span>
+              </label>
+              <label class="illustration-option">
+                <input type="radio" name="illustration" value="assets/rain-illustration-crosswalk-v1.webp" />
+                <img src="assets/rain-illustration-crosswalk-v1.webp" width="1280" height="960" loading="lazy" alt="과슈로 그린 우산 쓴 사람들의 횡단보도" />
+                <span>횡단보도</span>
+              </label>
+              <label class="illustration-option">
+                <input type="radio" name="illustration" value="assets/rain-illustration-alley-v1.webp" />
+                <img src="assets/rain-illustration-alley-v1.webp" width="1280" height="960" loading="lazy" alt="과슈로 그린 비 오는 서울 골목" />
+                <span>골목의 처마</span>
+              </label>
+              <label class="illustration-option">
+                <input type="radio" name="illustration" value="assets/rain-illustration-river-bench-v1.webp" />
+                <img src="assets/rain-illustration-river-bench-v1.webp" width="1280" height="960" loading="lazy" alt="과슈로 그린 비 온 뒤 한강 벤치" />
+                <span>한강 벤치</span>
+              </label>
+            </div>
+            <p class="field-help" id="illustration-help">모든 그림은 사진과 구분되는 기록용 삽화로 표시됩니다.</p>
+          </fieldset>
+        </div>
+
+        <p class="privacy-note">정확한 주소나 타인의 얼굴이 드러나는 정보는 적지 말아주세요. 제출된 기록은 관리자 검수 후 공개됩니다.</p>
+        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+
+        <div class="dialog-actions">
+          <button class="button" type="button" id="cancel-dialog">취소</button>
+          <button class="button button--primary" type="submit" id="save-entry">검수 요청하기</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
