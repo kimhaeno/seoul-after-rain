@@ -1,5 +1,11 @@
-const STORAGE_KEY = "seoul-after-rain-entries-v1";
+const STORAGE_KEY = "seoul-after-rain-entries-v2";
+const RETIRED_STORAGE_KEY = "seoul-after-rain-entries-v1";
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+const SEOUL_TIME_ZONE = "Asia/Seoul";
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MOBILE_ENTRY_STATE = "seoulAfterRainEntry";
+const MOBILE_MAP_STATE = "seoulAfterRainDistrict";
+const mobileViewport = window.matchMedia("(max-width: 44rem)");
 
 const districts = [
   "강남구",
@@ -154,15 +160,21 @@ const sampleIllustrations = {
   "archive-008": illustrationChoices[3],
 };
 
+const sampleDayOffsets = [0, 1, 2, 4, 6, 8, 10, 16];
+
 sampleEntries.forEach((entry) => {
   entry.illustration = sampleIllustrations[entry.id];
 });
+sampleEntries.length = 0;
 
-const VIEW_KEY = "seoul-after-rain-view-v1";
+const VIEW_KEY = "seoul-after-rain-view-v2";
 const archiveGrid = document.querySelector("#archive-grid");
+const deskWorkspace = document.querySelector("#desk-view");
 const deskReader = document.querySelector("#desk-reader");
 const rainMap = document.querySelector("#rain-map");
 const mapReader = document.querySelector("#map-reader");
+const mapSheet = document.querySelector("#map-sheet");
+const mapSheetContent = document.querySelector("#map-sheet-content");
 const resultCount = document.querySelector("#result-count");
 const emptyState = document.querySelector("#empty-state");
 const districtFilter = document.querySelector("#district-filter");
@@ -233,27 +245,103 @@ const districtMapLayout = {
   "관악구": [4, 7],
 };
 
+clearRetiredEntries();
 let userEntries = loadUserEntries();
 let activeRain = "all";
 let activeView = loadView();
 let selectedEntryId = "archive-004";
-let selectedMapDistrict = "용산구";
+let selectedMapDistrict = mobileViewport.matches ? null : "용산구";
 let pendingPhoto = null;
+
+const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: SEOUL_TIME_ZONE,
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+});
+
+const seoulTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: SEOUL_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function seoulDateParts(value) {
+  const parts = Object.fromEntries(
+    seoulDateFormatter
+      .formatToParts(new Date(value))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  return { year: parts.year, month: parts.month, day: parts.day };
+}
+
+function seoulCalendarDay(value) {
+  const { year, month, day } = seoulDateParts(value);
+  return Date.UTC(year, month - 1, day) / DAY_MS;
+}
+
+function sampleCreatedAt(daysAgo, time) {
+  const { year, month, day } = seoulDateParts(Date.now());
+  const [hour, minute] = time.split(":").map(Number);
+  return new Date(Date.UTC(year, month - 1, day - daysAgo, hour - 9, minute)).toISOString();
+}
+
+function formatEntryDate(entry, now = Date.now()) {
+  const timestamp = Date.parse(entry.createdAt);
+  if (!Number.isFinite(timestamp)) {
+    return `날짜 미상 · ${entry.time || "시각 미상"}`;
+  }
+
+  const entryParts = seoulDateParts(timestamp);
+  const nowParts = seoulDateParts(now);
+  const daysAgo = Math.max(0, seoulCalendarDay(now) - seoulCalendarDay(timestamp));
+  let dateLabel;
+
+  if (daysAgo === 0) dateLabel = "오늘";
+  else if (daysAgo === 1) dateLabel = "어제";
+  else if (daysAgo < 7) dateLabel = `${daysAgo}일 전`;
+  else if (daysAgo < 14) dateLabel = "저번 주";
+  else if (entryParts.year === nowParts.year) dateLabel = `${entryParts.month}월 ${entryParts.day}일`;
+  else dateLabel = `${entryParts.year}년 ${entryParts.month}월 ${entryParts.day}일`;
+
+  return `${dateLabel} · ${seoulTimeFormatter.format(timestamp)}`;
+}
+
+sampleEntries.forEach((entry, index) => {
+  entry.createdAt = sampleCreatedAt(sampleDayOffsets[index], entry.time);
+});
 
 function loadUserEntries() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(stored) ? stored : [];
+    if (!Array.isArray(stored)) return [];
+    return stored.map((entry) => {
+      if (entry.createdAt) return entry;
+      const legacyTimestamp = Number(String(entry.id || "").replace(/^local-/, ""));
+      return Number.isFinite(legacyTimestamp) && legacyTimestamp > 0
+        ? { ...entry, createdAt: new Date(legacyTimestamp).toISOString() }
+        : entry;
+    });
   } catch {
     return [];
   }
 }
 
+function clearRetiredEntries() {
+  try {
+    localStorage.removeItem(RETIRED_STORAGE_KEY);
+  } catch {
+    // The archive still starts empty when browser storage is unavailable.
+  }
+}
+
 function loadView() {
   try {
-    return localStorage.getItem(VIEW_KEY) === "map" ? "map" : "desk";
+    return localStorage.getItem(VIEW_KEY) === "desk" ? "desk" : "map";
   } catch {
-    return "desk";
+    return "map";
   }
 }
 
@@ -308,7 +396,7 @@ function makeElement(tag, className, text) {
 
 function makeMeta(entry) {
   const meta = makeElement("p", "entry-meta");
-  [entry.district, entry.place || "장소 미기재", entry.time, entry.rain].forEach((value) => {
+  [entry.district, entry.place || "장소 미기재", formatEntryDate(entry), entry.rain].forEach((value) => {
     meta.append(makeElement("span", "", value));
   });
   if (entry.sample) meta.append(makeElement("span", "sample-mark", "샘플 기록"));
@@ -342,7 +430,9 @@ function makeEntryRow(entry) {
   button.setAttribute("aria-pressed", String(entry.id === selectedEntryId));
 
   const top = makeElement("span", "entry-row__top");
-  const stateText = entry.status === "pending" ? `검수 대기 · ${entry.time}` : `${entry.time} · ${entry.rain}`;
+  const stateText = entry.status === "pending"
+    ? `${formatEntryDate(entry)} · 검수 대기`
+    : `${formatEntryDate(entry)} · ${entry.rain}`;
   top.append(makeElement("span", "entry-row__district", entry.district), makeElement("span", "", stateText));
   button.append(top, makeElement("strong", "", entry.title), makeElement("span", "entry-row__place", entry.place || "장소 미기재"));
   return button;
@@ -383,6 +473,10 @@ function renderDeskReader(entry) {
   }
 
   const copy = makeElement("div", "reader-copy");
+  const backButton = makeElement("button", "mobile-reader-back", "← 목록");
+  backButton.type = "button";
+  backButton.addEventListener("click", closeMobileReader);
+  copy.append(backButton);
   copy.append(makeMeta(entry));
   copy.append(makeElement("h2", "", entry.title));
   copy.append(makeElement("p", "reader-story", entry.excerpt));
@@ -433,27 +527,40 @@ function renderRainMap() {
     button.style.setProperty("--map-row", row);
     button.setAttribute("aria-pressed", String(district === selectedMapDistrict));
     button.setAttribute("aria-label", `${district}, 기록 ${count}개`);
-    button.append(makeElement("span", "", district.replace("구", "")), makeElement("strong", "", String(count)));
+    const shortDistrict = district.endsWith("구") ? district.slice(0, -1) : district;
+    button.append(makeElement("span", "", shortDistrict), makeElement("strong", "", String(count)));
     return button;
   });
   rainMap.replaceChildren(riverLabel, ...districtButtons);
 }
 
-function renderMapReader() {
+function renderMapReaderInto(target, options = {}) {
+  target.replaceChildren();
+  if (!selectedMapDistrict) return;
+
   const entries = allEntries().filter((entry) => entry.district === selectedMapDistrict);
-  mapReader.replaceChildren();
   const head = makeElement("div", "map-reader__head");
   head.append(makeElement("p", "", "선택한 지역"), makeElement("h2", "", selectedMapDistrict), makeElement("span", "", `${entries.length}개의 기록`));
-  mapReader.append(head);
+  if (options.mobile) {
+    const closeButton = makeElement("button", "map-sheet__close", "닫기");
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "지역 기록 닫기");
+    closeButton.addEventListener("click", closeMobileMapSheet);
+    head.append(closeButton);
+  }
+  target.append(head);
 
   if (entries.length === 0) {
     const empty = makeElement("div", "map-reader__empty");
     empty.append(makeElement("p", "", "아직 이 지역에서 도착한 기록이 없습니다."));
     const action = makeElement("button", "text-action", "첫 기록 남기기 ↗");
     action.type = "button";
-    action.addEventListener("click", openCompose);
+    action.addEventListener("click", () => {
+      if (options.mobile) dismissMapSheetForCompose();
+      openCompose();
+    });
     empty.append(action);
-    mapReader.append(empty);
+    target.append(empty);
     return;
   }
 
@@ -463,25 +570,124 @@ function renderMapReader() {
     const button = makeElement("button", "map-entry__action", "데스크에서 읽기 →");
     button.type = "button";
     button.dataset.mapEntryId = entry.id;
-    article.append(makeElement("span", "", `${entry.time} · ${entry.rain}`), makeElement("strong", "", entry.title), makeElement("p", "", entry.excerpt), button);
+    article.append(makeElement("span", "", `${formatEntryDate(entry)} · ${entry.rain}`), makeElement("strong", "", entry.title), makeElement("p", "", entry.excerpt), button);
     list.append(article);
   });
-  mapReader.append(list);
+  target.append(list);
 }
 
-function setView(view) {
+function renderMapReader() {
+  renderMapReaderInto(mapReader);
+  renderMapReaderInto(mapSheetContent, { mobile: true });
+}
+
+function replaceMobileMapState(district = null) {
+  const state = { ...(window.history.state || {}), archiveView: "map" };
+  delete state[MOBILE_ENTRY_STATE];
+  if (district) state[MOBILE_MAP_STATE] = district;
+  else delete state[MOBILE_MAP_STATE];
+  window.history.replaceState(state, "");
+}
+
+function openMobileMapSheet(district, options = {}) {
+  if (!mobileViewport.matches || !districts.includes(district)) return;
+  selectedMapDistrict = district;
+  renderRainMap();
+  renderMapReader();
+
+  if (options.pushHistory !== false) {
+    replaceMobileMapState();
+    window.history.pushState({ ...(window.history.state || {}), archiveView: "map", [MOBILE_MAP_STATE]: district }, "");
+  }
+
+  if (!mapSheet.open) mapSheet.showModal();
+  requestAnimationFrame(() => {
+    const focusTarget = mapSheetContent.querySelector(".map-entry__action")
+      || mapSheetContent.querySelector(".map-reader__empty .text-action")
+      || mapSheetContent.querySelector(".map-sheet__close");
+    focusTarget?.focus({ preventScroll: true });
+  });
+}
+
+function closeMobileMapSheet(options = {}) {
+  if (options.history !== false && window.history.state?.[MOBILE_MAP_STATE]) {
+    window.history.back();
+    return;
+  }
+  if (mapSheet.open) mapSheet.close();
+  selectedMapDistrict = null;
+  renderRainMap();
+  renderMapReader();
+}
+
+function dismissMapSheetForCompose() {
+  replaceMobileMapState();
+  closeMobileMapSheet({ history: false });
+}
+
+function setMobileDeskPanel(panel, options = {}) {
+  const target = panel === "detail" ? "detail" : "list";
+  deskWorkspace.dataset.mobilePanel = target;
+  if (!mobileViewport.matches || !options.focus) return;
+
+  requestAnimationFrame(() => {
+    const focusTarget = target === "detail"
+      ? deskReader.querySelector(".mobile-reader-back")
+      : document.getElementById(selectedEntryId);
+    focusTarget?.focus({ preventScroll: true });
+  });
+}
+
+function pushMobileEntryState(entryId, originView) {
+  if (!mobileViewport.matches) return;
+  const baseState = { ...(window.history.state || {}), archiveView: originView };
+  delete baseState[MOBILE_ENTRY_STATE];
+  window.history.replaceState(baseState, "");
+  window.history.pushState({ ...baseState, archiveView: "desk", [MOBILE_ENTRY_STATE]: entryId }, "");
+}
+
+function replaceMobileViewState(view) {
+  if (!mobileViewport.matches) return;
+  const state = { ...(window.history.state || {}), archiveView: view };
+  delete state[MOBILE_ENTRY_STATE];
+  delete state[MOBILE_MAP_STATE];
+  window.history.replaceState(state, "");
+}
+
+function closeMobileReader() {
+  if (mobileViewport.matches && window.history.state?.[MOBILE_ENTRY_STATE]) {
+    window.history.back();
+    return;
+  }
+  setMobileDeskPanel("list", { focus: true });
+}
+
+function setView(view, options = {}) {
   activeView = view === "map" ? "map" : "desk";
+  if (activeView !== "map" && mapSheet.open) mapSheet.close();
+  if (mobileViewport.matches && activeView === "map" && options.resetMapSelection) {
+    selectedMapDistrict = null;
+  }
   viewPanels.forEach((panel) => {
     panel.hidden = panel.dataset.viewPanel !== activeView;
   });
   viewButtons.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.view === activeView));
   });
-  try {
-    localStorage.setItem(VIEW_KEY, activeView);
-  } catch {
-    // The view still changes when browser storage is unavailable.
+  if (options.persist !== false) {
+    try {
+      localStorage.setItem(VIEW_KEY, activeView);
+    } catch {
+      // The view still changes when browser storage is unavailable.
+    }
   }
+
+  if (mobileViewport.matches) {
+    setMobileDeskPanel(activeView === "desk" ? options.mobilePanel : "list", {
+      focus: options.focusMobile,
+    });
+  }
+
   if (activeView === "map") {
     renderRainMap();
     renderMapReader();
@@ -631,7 +837,10 @@ rainFilterButtons.forEach((button) => {
 districtFilter.addEventListener("change", renderArchive);
 
 viewButtons.forEach((button) => {
-  button.addEventListener("click", () => setView(button.dataset.view));
+  button.addEventListener("click", () => {
+    replaceMobileViewState(button.dataset.view);
+    setView(button.dataset.view, { mobilePanel: "list", resetMapSelection: true });
+  });
 });
 
 archiveGrid.addEventListener("click", (event) => {
@@ -639,17 +848,25 @@ archiveGrid.addEventListener("click", (event) => {
   if (!button) return;
   selectedEntryId = button.dataset.entryId;
   renderArchive();
+  if (mobileViewport.matches) {
+    pushMobileEntryState(selectedEntryId, "desk");
+    setMobileDeskPanel("detail", { focus: true });
+  }
 });
 
 rainMap.addEventListener("click", (event) => {
   const button = event.target.closest("[data-map-district]");
   if (!button) return;
+  if (mobileViewport.matches) {
+    openMobileMapSheet(button.dataset.mapDistrict);
+    return;
+  }
   selectedMapDistrict = button.dataset.mapDistrict;
   renderRainMap();
   renderMapReader();
 });
 
-mapReader.addEventListener("click", (event) => {
+function handleMapReaderClick(event) {
   const button = event.target.closest("[data-map-entry-id]");
   if (!button) return;
   selectedEntryId = button.dataset.mapEntryId;
@@ -659,8 +876,61 @@ mapReader.addEventListener("click", (event) => {
     candidate.setAttribute("aria-pressed", String(candidate.dataset.rain === "all"));
   });
   renderArchive();
-  setView("desk");
-  document.getElementById(selectedEntryId)?.focus({ preventScroll: true });
+  if (mobileViewport.matches) {
+    if (mapSheet.open) mapSheet.close();
+    pushMobileEntryState(selectedEntryId, "map");
+    setView("desk", { mobilePanel: "detail", focusMobile: true });
+  } else {
+    setView("desk");
+    document.getElementById(selectedEntryId)?.focus({ preventScroll: true });
+  }
+}
+
+mapReader.addEventListener("click", handleMapReaderClick);
+mapSheetContent.addEventListener("click", handleMapReaderClick);
+
+mapSheet.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeMobileMapSheet();
+});
+
+mapSheet.addEventListener("click", (event) => {
+  if (event.target === mapSheet) closeMobileMapSheet();
+});
+
+window.addEventListener("popstate", (event) => {
+  if (!mobileViewport.matches) return;
+  const entryId = event.state?.[MOBILE_ENTRY_STATE];
+
+  if (entryId && allEntries().some((entry) => entry.id === entryId)) {
+    selectedEntryId = entryId;
+    renderArchive();
+    setView("desk", { mobilePanel: "detail", focusMobile: true, persist: false });
+    return;
+  }
+
+  const mapDistrict = event.state?.[MOBILE_MAP_STATE];
+  if (mapDistrict && districts.includes(mapDistrict)) {
+    setView("map", { persist: false });
+    openMobileMapSheet(mapDistrict, { pushHistory: false });
+    return;
+  }
+
+  const previousView = event.state?.archiveView === "map" ? "map" : "desk";
+  if (previousView === "map") closeMobileMapSheet({ history: false });
+  setView(previousView, { mobilePanel: "list", persist: false });
+  if (previousView === "desk") setMobileDeskPanel("list", { focus: true });
+});
+
+mobileViewport.addEventListener("change", (event) => {
+  if (event.matches) {
+    closeMobileMapSheet({ history: false });
+  } else {
+    if (mapSheet.open) mapSheet.close();
+    if (!selectedMapDistrict) selectedMapDistrict = "용산구";
+    renderRainMap();
+    renderMapReader();
+  }
 });
 
 composeForm.querySelectorAll("input[required], select[required], textarea[required]").forEach((field) => {
@@ -744,6 +1014,7 @@ composeForm.addEventListener("submit", (event) => {
     title: String(data.get("title")).trim(),
     excerpt: String(data.get("story")).trim(),
     time: new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now),
+    createdAt: now.toISOString(),
     rain: data.get("rain"),
     tag: "시민 기록",
     sample: false,
@@ -770,15 +1041,22 @@ composeForm.addEventListener("submit", (event) => {
   renderArchive();
   renderRainMap();
   renderMapReader();
-  setView("desk");
+  if (mobileViewport.matches) {
+    pushMobileEntryState(entry.id, "desk");
+    setView("desk", { mobilePanel: "detail", focusMobile: true });
+  } else {
+    setView("desk");
+  }
   closeCompose();
 
   const savedCard = document.getElementById(entry.id);
-  savedCard?.focus({ preventScroll: true });
-  savedCard?.scrollIntoView({
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    block: "nearest",
-  });
+  if (!mobileViewport.matches) {
+    savedCard?.focus({ preventScroll: true });
+    savedCard?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "nearest",
+    });
+  }
   resultCount.textContent = storageWarning || "검수 대기함에 저장되었습니다. 이 브라우저에만 보관됩니다.";
   resetComposer();
 });
@@ -788,4 +1066,5 @@ renderArchive();
 renderRainMap();
 renderMapReader();
 setView(activeView);
+replaceMobileViewState(activeView);
 loadWeatherState();
