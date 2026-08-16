@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check public/app.js && node --check functions/api/weather.js",
+    "check": "node --check public/app.js && node --check functions/api/weather.js && node --check worker/index.js",
     "test": "node --test tests/weather.test.js"
   }
 }

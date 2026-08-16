@@ -2,16 +2,17 @@
 
 비 오는 날 서울의 장면을 시민의 문장과 사진으로 보관하는 정적 아카이브 프로토타입입니다.
 
-## Cloudflare Pages
+## Cloudflare Workers
 
 - Production branch: `main`
-- Framework preset: `None`
-- Build command: `exit 0`
-- Build output directory: `public`
+- Build command: 비워두기
+- Deploy command: `npx wrangler deploy`
+- Non-production branch deploy command: `npx wrangler versions upload`
+- Root directory: `/`
 
-Pages 프로젝트의 `Settings > Variables and Secrets`에서 공공데이터포털의 Decoding 인증키를 `KMA_SERVICE_KEY`라는 암호화된 Secret으로 등록합니다. 키를 저장소에 커밋하지 마세요.
+Worker의 `Settings > Variables and Secrets`에서 공공데이터포털의 Decoding 인증키를 `KMA_SERVICE_KEY`라는 암호화된 런타임 Secret으로 등록합니다. Workers Builds의 빌드 변수 입력란에는 이 키를 넣지 않습니다. 키를 저장소에 커밋하지 마세요.
 
-`functions/api/weather.js`는 기상청 초단기실황과 초단기예보를 읽어 `rain`, `approaching`, `dry` 가운데 하나를 반환합니다. API 호출에 실패하면 사이트는 `dry` 상태로 조용히 돌아갑니다.
+`worker/index.js`가 정적 자산과 `/api/weather` 요청을 나누고, `functions/api/weather.js`는 기상청 초단기실황과 초단기예보를 읽어 `rain`, `approaching`, `dry` 가운데 하나를 반환합니다. API 호출에 실패하면 사이트는 `dry` 상태로 조용히 돌아갑니다.
 
 ## Local preview
 
