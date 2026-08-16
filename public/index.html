@@ -40,17 +40,17 @@
             <span data-compose-label>지난 비 남기기</span>
           </button>
           <div class="view-switch" role="group" aria-label="보기 전환">
-            <button class="view-switch__button" type="button" data-view="desk" data-tooltip="아카이브 데스크" aria-label="아카이브 데스크 보기" aria-controls="desk-view" aria-pressed="true">
+            <button class="view-switch__button" type="button" data-view="desk" data-tooltip="아카이브 데스크" aria-label="아카이브 데스크 보기" aria-controls="desk-view" aria-pressed="false">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="7" height="16" /><path d="M14 6h7M14 12h7M14 18h7" /></svg>
             </button>
-            <button class="view-switch__button" type="button" data-view="map" data-tooltip="비 지도" aria-label="비 지도 보기" aria-controls="map-view" aria-pressed="false">
+            <button class="view-switch__button" type="button" data-view="map" data-tooltip="비 지도" aria-label="비 지도 보기" aria-controls="map-view" aria-pressed="true">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z" /><path d="M9 3v15M15 6v15" /></svg>
             </button>
           </div>
         </div>
       </section>
 
-      <section class="workspace desk-workspace" id="desk-view" data-view-panel="desk" aria-label="아카이브 데스크">
+      <section class="workspace desk-workspace" id="desk-view" data-view-panel="desk" data-mobile-panel="list" aria-label="아카이브 데스크" hidden>
         <aside class="desk-sidebar" aria-label="기록 목록과 필터">
           <div class="desk-controls">
             <label class="district-filter">
@@ -78,7 +78,7 @@
         <article class="desk-reader" id="desk-reader" aria-live="polite"></article>
       </section>
 
-      <section class="workspace map-workspace" id="map-view" data-view-panel="map" aria-label="서울 비 지도" hidden>
+      <section class="workspace map-workspace" id="map-view" data-view-panel="map" aria-label="서울 비 지도">
         <div class="rain-map-wrap">
           <div class="map-heading">
             <h2>기록이 머문 서울</h2>
@@ -95,6 +95,10 @@
         <span id="weather-credit" hidden> · 날씨 데이터: <a href="https://www.weather.go.kr/" target="_blank" rel="noreferrer">기상청</a></span>
       </p>
     </main>
+
+    <dialog class="map-sheet" id="map-sheet" aria-label="선택한 지역의 기록">
+      <div class="map-sheet__content" id="map-sheet-content"></div>
+    </dialog>
 
     <dialog class="compose-dialog" id="compose-dialog" aria-labelledby="compose-title">
       <form class="compose-form" id="compose-form" novalidate>
